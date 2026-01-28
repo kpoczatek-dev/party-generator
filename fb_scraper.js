@@ -9,8 +9,10 @@
  * 5. Wklej je w polu "Import z Facebooka" w Generatorze Imprez.
  */
 
-(function() {
+(async function() {
     console.log("🚀 Rozpoczynam pobieranie wydarzeń...");
+
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
 
     const events = [];
     
@@ -30,47 +32,75 @@
             const container = h1.closest('div[role="main"]') || document.body;
             
             if (container) {
-                // Szukamy sekcji "Szczegółowe informacje" (bo container może jej nie łapać jeśli jest w kolumnie obok)
                 // Próba automatycznego rozwinięcia "Wyświetl więcej" / "See more"
                 // Szukamy przycisków w pobliżu, które mogą rozwijać opis
                 const expandButtons = document.querySelectorAll('div[role="button"], span[role="button"]');
+                let clicked = false;
                 expandButtons.forEach(btn => {
                     if (btn.innerText.includes("Wyświetl więcej") || btn.innerText.includes("See more")) {
-                        try { btn.click(); } catch(e) {}
+                        try { 
+                            btn.click(); 
+                            clicked = true;
+                            console.log("🖱️ Kliknięto 'Wyświetl więcej'...");
+                        } catch(e) {}
                     }
                 });
                 
-                // Krótkie opóźnienie na render (w skrypcie synchronicznym to trudne, więc liczymy że React zareaguje szybko lub tekst jest w DOM)
-                // Wklejany skrypt nie może czekać, więc bierzemy co jest.
+                if (clicked) {
+                    console.log("⏳ Czekam 2 sekundy na załadowanie opisu...");
+                    await sleep(2000);
+                }
 
-                // Szukamy sekcji "Szczegółowe informacje" używając XPath (bardziej precyzyjne)
+                // Szukamy sekcji "Szczegółowe informacje" używając XPath
                 let detailsText = "";
                 const xpath = "//*[contains(text(), 'Szczegółowe informacje') or contains(text(), 'Details')]";
                 const detailsHeader = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
                 
                 if (detailsHeader) {
-                    // Idziemy w górę, aż znajdziemy kontener z dużą ilością tekstu
-                    // Zazwyczaj header jest w jakimś wrapperze, a tekst pod nim.
-                    // Spróbujmy znaleźć wspólnego rodzica dla nagłówka i tekstu.
-                    let parent = detailsHeader.parentElement;
-                    let found = false;
+                    console.log("Found Details Header:", detailsHeader);
+                    // Strategia: Nagłówek jest zazwyczaj w jakimś kontenerze.
+                    // Treść jest w kolejnym elemencie (sibling) lub w rodzicu->dziecko.
                     
-                    // Przeszukujemy 5 poziomów w górę
-                    for(let i=0; i<5; i++) {
-                        if (!parent) break;
-                        if (parent.innerText.length > 200) { // Jeśli kontener ma sporo tekstu, to pewnie to
-                            detailsText = parent.innerText;
-                            found = true;
-                            break;
-                        }
-                        parent = parent.parentElement;
+                    // Próbujemy kilku podejść:
+                    // 1. Next Sibling nagłówka (częste w prostych strukturach)
+                    let contentNode = detailsHeader.nextElementSibling;
+                    
+                    // 2. Jeśli header jest w wrapperze (np. span w div), idziemy wyżej i szukamy siblinga wrappera
+                    if (!contentNode || contentNode.innerText.length < 10) {
+                         contentNode = detailsHeader.parentElement.nextElementSibling;
                     }
-                    
-                    if (!found && parent) detailsText = parent.innerText; // Fallback
+                    if (!contentNode || contentNode.innerText.length < 10) {
+                         contentNode = detailsHeader.parentElement.parentElement.nextElementSibling;
+                    }
+
+                    // 3. Jeśli nadal nic, szukamy kontenera "x1yztbdb" (częsta klasa FB) w dół od wspólnego rodzica
+                    if (!contentNode || contentNode.innerText.length < 10) {
+                        const wrapper = detailsHeader.closest('div.x1yztbdb') || detailsHeader.closest('div[style*="border-radius"]');
+                        if (wrapper) {
+                            detailsText = wrapper.innerText; // Bierzemy cały wrapper sekcji
+                        }
+                    } else {
+                        detailsText = contentNode.innerText;
+                    }
+                } else {
+                    console.log("Details Header NOT found. Searching global descriptors...");
+                    // Fallback: szukamy po prostu dużego bloku tekstu, który zawiera "Muzycznie" lub "Wstęp"
+                    const paragraphs = document.querySelectorAll('div[dir="auto"]'); // FB używa dir="auto" dla treści postów/opisów
+                    paragraphs.forEach(p => {
+                        if (p.innerText.length > 50 && (p.innerText.includes("Muzycznie") || p.innerText.includes("Salsa") || p.innerText.includes("Wstęp"))) {
+                            detailsText += "\n" + p.innerText;
+                        }
+                    });
                 }
 
+                const text = container.innerText;
                 // Combine text from main container and details container (deduplicate? usually unnecessary for simple scraper)
-                const fullText = text + "\n" + detailsText;
+                // Note: detailsText might be subset of text, or text might be subset. 
+                // Let's rely on detailsText if found (since it's specific), otherwise text.
+                // Or concat to be safe.
+                
+                const fullText = (text.length > detailsText.length ? text : detailsText) + "\n" + detailsText; 
+                
                 const lines = fullText.split('\n').filter(l => l.trim().length > 0);
                 
                 let date = "";
@@ -103,8 +133,6 @@
                             }
                         }
                     }
-                    
-                    // Szukamy lokalizacji
                     
                     // Szukamy lokalizacji
                     if (!location && (line.includes(',') || line.includes('ul.') || /Katowice|Gliwice|Sosnowiec|Bytom|Chorzów|Świętochłowice/i.test(line)) && line.length < 150) {
