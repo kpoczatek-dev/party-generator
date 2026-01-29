@@ -74,6 +74,22 @@ document.addEventListener('DOMContentLoaded', function () {
 	const form = document.getElementById('form')
 
 	// Generowanie pól formularza
+	// Helper for DnD
+    function getDragAfterElement(container, y) {
+        const draggableElements = [...container.querySelectorAll('.event-container:not(.dragging)')]
+
+        return draggableElements.reduce((closest, child) => {
+            const box = child.getBoundingClientRect()
+            const offset = y - box.top - box.height / 2
+            if (offset < 0 && offset > closest.offset) {
+                return { offset: offset, element: child }
+            } else {
+                return closest
+            }
+        }, { offset: Number.NEGATIVE_INFINITY }).element
+    }
+
+	// Generowanie pól formularza
 	dni.forEach(dzienObj => {
 		const block = document.createElement('div')
 		block.className = 'day-block'
@@ -81,8 +97,36 @@ document.addEventListener('DOMContentLoaded', function () {
 		block.dataset.dzienTygIndex = dzienObj.dzienTygIndex
 		block.innerHTML = `<h3>${dzienObj.label}</h3>`
 
+        // Drag Over for determining order
+        block.addEventListener('dragover', e => {
+            e.preventDefault()
+            const afterElement = getDragAfterElement(block, e.clientY)
+            const draggable = document.querySelector('.dragging')
+            // Ensure we are dropping inside the correct day block (simple check: is draggable child of this block?)
+            // Actually, we might want to allow moving between days? User said "miedzy soba", implies reordering. Moving between days might be complex (changing dates?).
+            // Let's restrict to same day for now to avoid logic mess.
+            if (draggable && block.contains(draggable)) {
+                if (afterElement == null) {
+                    block.appendChild(draggable)
+                } else {
+                    block.insertBefore(draggable, afterElement)
+                }
+            }
+        })
+
 		for (let i = 0; i < 5; i++) {
 			const container = document.createElement('div')
+            container.className = 'event-container' // Add class for CSS
+            container.draggable = true // Enable Drag
+            
+            container.addEventListener('dragstart', () => {
+                container.classList.add('dragging')
+            })
+
+            container.addEventListener('dragend', () => {
+                container.classList.remove('dragging')
+            })
+
 			const checkbox = document.createElement('input')
 			checkbox.type = 'checkbox'
             checkbox.className = 'toggle-checkbox' // Add class for selection
@@ -112,47 +156,7 @@ document.addEventListener('DOMContentLoaded', function () {
 			toggle.append(` Wydarzenie taneczne ${i + 1} `) 
             toggle.appendChild(promoteLabel)
 
-            // --- REORDERING BUTTONS ---
-            const controls = document.createElement('span');
-            controls.style.marginLeft = '10px';
-            
-            const btnUp = document.createElement('button');
-            btnUp.textContent = '⬆️';
-            btnUp.style.border = 'none';
-            btnUp.style.background = 'transparent';
-            btnUp.style.cursor = 'pointer';
-            btnUp.title = 'Przesuń wyżej';
-            btnUp.onclick = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                const currentContainer = container;
-                const prevContainer = currentContainer.previousElementSibling;
-                // Ensure we don't move above the H3 header or if no prev sibling
-                if (prevContainer && prevContainer.tagName === 'DIV') {
-                    currentContainer.parentNode.insertBefore(currentContainer, prevContainer);
-                }
-            };
 
-            const btnDown = document.createElement('button');
-            btnDown.textContent = '⬇️';
-            btnDown.style.border = 'none';
-            btnDown.style.background = 'transparent';
-            btnDown.style.cursor = 'pointer';
-            btnDown.title = 'Przesuń niżej';
-            btnDown.onclick = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                const currentContainer = container;
-                const nextContainer = currentContainer.nextElementSibling;
-                if (nextContainer) {
-                    currentContainer.parentNode.insertBefore(nextContainer, currentContainer);
-                }
-            };
-
-            controls.appendChild(btnUp);
-            controls.appendChild(btnDown);
-            toggle.appendChild(controls);
-            // --------------------------
 
 			const eventBlock = document.createElement('div')
 			eventBlock.className = 'event-block'
@@ -727,7 +731,141 @@ document.addEventListener('DOMContentLoaded', function () {
 
     updateEventCounter();
     updateTitle(); // Inicjalizacja tytułu
+    initInbox();   // Inicjalizacja skrzynki odbiorczej
 })
+
+// --- INBOX HELPER ---
+function initInbox() {
+    const urlInput = document.getElementById('google-sheet-url');
+    const checkBtn = document.getElementById('check-inbox-btn');
+    const container = document.getElementById('inbox-container');
+
+    // Load saved URL
+    const savedUrl = localStorage.getItem('party_inbox_url');
+    if (savedUrl) urlInput.value = savedUrl;
+
+    // Save URL on change
+    urlInput.addEventListener('change', () => {
+        localStorage.setItem('party_inbox_url', urlInput.value);
+    });
+
+    checkBtn.addEventListener('click', () => {
+        const url = urlInput.value.trim();
+        if (!url) {
+            alert('Wklej najpierw link do pliku CSV!');
+            return;
+        }
+
+        checkBtn.disabled = true;
+        checkBtn.textContent = '⏳ Pobieranie...';
+
+        fetch(url)
+            .then(r => r.text())
+            .then(csvText => {
+                const rows = csvText.split('\n').map(r => r.trim()).filter(r => r);
+                // Assume Row 1 is header, skip it.
+                // Rows structure: Timestamp, Link, ...
+                
+                const pendingItems = [];
+                const processed = JSON.parse(localStorage.getItem('party_inbox_done') || '[]');
+
+                // Start from index 1 (skip header)
+                for (let i = 1; i < rows.length; i++) {
+                    // Simple CSV parser (split by comma, but handle potential quotes? For now simple split)
+                    // Google Forms CSV: "Timestamp","Link",...
+                    // Or just Timestamp,Link
+                    // Let's assume the Link is the second column (or find one that looks like a URL)
+                    
+                    const cols = rows[i].split(',');
+                    // Find a column with "facebook.com"
+                    const linkCol = cols.find(c => c.includes('facebook.com') || c.includes('fb.me'));
+                    
+                    if (linkCol) {
+                        const cleanLink = linkCol.replace(/"/g, '').trim();
+                        if (!processed.includes(cleanLink)) {
+                            pendingItems.push(cleanLink);
+                        }
+                    }
+                }
+
+                renderInbox(pendingItems);
+                checkBtn.disabled = false;
+                checkBtn.textContent = '🔄 Sprawdź nowe zgłoszenia';
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Błąd pobierania CSV. Sprawdź czy link jest poprawny (musi być opublikowany jako CSV).');
+                checkBtn.disabled = false;
+                checkBtn.textContent = '🔄 Sprawdź nowe zgłoszenia';
+            });
+    });
+
+    function renderInbox(links) {
+        container.innerHTML = '';
+        if (links.length === 0) {
+            container.innerHTML = '<div style="color: grey; font-style: italic;">Brak nowych zgłoszeń (lub wszystkie zatwierdzone).</div>';
+            return;
+        }
+
+        links.forEach(link => {
+            const div = document.createElement('div');
+            div.style.background = 'white';
+            div.style.padding = '10px';
+            div.style.marginBottom = '5px';
+            div.style.borderRadius = '5px';
+            div.style.display = 'flex';
+            div.style.justifyContent = 'space-between';
+            div.style.alignItems = 'center';
+            div.style.borderLeft = '4px solid orange';
+
+            const linkText = document.createElement('a');
+            linkText.href = link;
+            linkText.target = '_blank';
+            linkText.textContent = link.length > 50 ? link.substring(0, 50) + '...' : link;
+            linkText.style.fontWeight = 'bold';
+            linkText.style.color = '#333';
+            linkText.style.textDecoration = 'none';
+
+            const actions = document.createElement('div');
+            
+            const btnCopy = document.createElement('button');
+            btnCopy.textContent = '📋';
+            btnCopy.style.margin = '0 5px';
+            btnCopy.title = 'Skopiuj link';
+            btnCopy.onclick = () => {
+                navigator.clipboard.writeText(link);
+                btnCopy.textContent = '✅';
+                setTimeout(()=>btnCopy.textContent='📋', 1000);
+            };
+
+            const btnDone = document.createElement('button');
+            btnDone.textContent = '✔️ Zatwierdź';
+            btnDone.style.background = '#2ed573';
+            btnDone.style.margin = '0 5px';
+            btnDone.title = 'Oznacz jako zrobione (znika z listy)';
+            btnDone.onclick = () => {
+                markAsDone(link);
+                div.remove();
+                if (container.children.length === 0) {
+                    container.innerHTML = '<div style="color: grey; font-style: italic;">Wszystko zrobione! 🎉</div>';
+                }
+            };
+
+            actions.append(btnCopy, btnDone);
+            div.append(linkText, actions);
+            container.append(div);
+        });
+    }
+
+    function markAsDone(link) {
+        const processed = JSON.parse(localStorage.getItem('party_inbox_done') || '[]');
+        if (!processed.includes(link)) {
+            processed.push(link);
+            localStorage.setItem('party_inbox_done', JSON.stringify(processed));
+        }
+    }
+}
+
 
 // --- HELPERS TYTUŁOWE ---
 
@@ -828,7 +966,7 @@ function generujPost() {
 		if (dzienWiersz) wynik += `🗓️ ${dzienTekst}:\n${dzienWiersz}\n`
 	})
 
-	wynik += 'Do zobaczenia! 💃🕺\n\n' + document.getElementById('hashtagi').value
+	wynik += 'Do zobaczenia! 💃🕺\n@wszyscy\n\n' + document.getElementById('hashtagi').value
 	document.getElementById('wynik').value = wynik
 	document.getElementById('ankieta').value = wynikAnkieta
 

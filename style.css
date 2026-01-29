@@ -1,69 +1,236 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Open+Sans:wght@400;600&display=swap');
+
+:root {
+    --cuban-red: #ffb300; /* Now Gold */
+    --cuban-blue: #0277bd;
+    --cuban-gold: #d32f2f; /* Now Red */
+    --cuban-cream: #fff8e1; /* Background */
+    --cuban-sand: #f5f5f5;
+    --text-dark: #37474f;
+    --card-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    --hover-shadow: 0 8px 12px rgba(0,0,0,0.15);
+}
+
 body {
-	font-family: sans-serif;
-	max-width: 800px;
-	margin: 20px auto;
-	background: #f4f4f4;
+	font-family: 'Open Sans', sans-serif;
+	max-width: 900px;
+	margin: 0 auto;
+	background: var(--cuban-cream);
+	color: var(--text-dark);
 	padding: 20px;
 }
-.day-block {
-	background: white;
-	padding: 15px;
-	margin-bottom: 15px;
-	border-radius: 8px;
-	border-left: 5px solid #ff4757;
+
+h1, h2, h3, h4 {
+    font-family: 'Montserrat', sans-serif;
+    color: var(--cuban-red);
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
-.event-block {
-	margin-top: 10px;
+
+h1 {
+    text-align: center;
+    border-bottom: 3px solid var(--cuban-blue);
+    padding-bottom: 10px;
+    margin-bottom: 30px;
 }
-.event-row {
-	display: flex;
-	gap: 10px;
-	margin-bottom: 8px;
-	align-items: center;
-}
+
+/* --- FORM COMPONENTS --- */
 input[type='text'],
-select {
-	padding: 8px;
-	border: 1px solid #ccc;
-	border-radius: 4px;
-	width: 100%;
-	box-sizing: border-box;
-	margin-bottom: 8px;
-}
-.opis-input {
-	flex-grow: 1;
-}
-.filters {
-	margin-bottom: 20px;
-	background: #e0e0e0;
-	padding: 10px;
-	border-radius: 5px;
-}
+select,
 textarea {
+	padding: 12px;
+	border: 2px solid #ddd;
+	border-radius: 8px;
 	width: 100%;
-    height: 300px;
-	margin-top: 10px;
-	border-radius: 5px;
-	border: 1px solid #aaa;
-	padding: 8px;
 	box-sizing: border-box;
+	margin-bottom: 12px;
+    font-family: inherit;
+    background: white;
+    transition: border-color 0.3s;
 }
+
+input[type='text']:focus,
+select:focus,
+textarea:focus {
+    border-color: var(--cuban-blue);
+    outline: none;
+}
+
 button {
-	background: #2ed573;
+	background: linear-gradient(135deg, var(--cuban-red), #b71c1c);
 	color: white;
 	border: none;
-	padding: 10px 20px;
-	border-radius: 5px;
+	padding: 12px 25px;
+	border-radius: 25px; /* Pill shape */
 	cursor: pointer;
 	margin-top: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    transition: transform 0.2s, box-shadow 0.2s;
 }
+
 button:hover {
-	background: #26af5f;
+	transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
 }
+
+button:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* --- LAYOUT BLOCKS --- */
+.day-block {
+	background: white;
+	padding: 20px;
+	margin-bottom: 25px;
+	border-radius: 12px;
+    border: none;
+    border-top: 6px solid var(--cuban-blue);
+	box-shadow: var(--card-shadow);
+}
+
+.day-block h3 {
+    margin-top: 0;
+    color: var(--cuban-blue);
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+}
+
+.filters {
+	margin-bottom: 25px;
+	background: white;
+	padding: 20px;
+	border-radius: 12px;
+    border-left: 6px solid var(--cuban-gold);
+    box-shadow: var(--card-shadow);
+}
+
+/* --- EVENT ITEMS --- */
+.event-container {
+    padding: 15px;
+    border-radius: 8px;
+    background: #fafafa;
+    margin-bottom: 10px;
+    border: 1px solid #eee;
+    transition: all 0.3s ease;
+}
+
+.event-container:hover {
+    background: white;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.event-block {
+	margin-top: 15px;
+    padding-left: 10px;
+    border-left: 2px solid #ddd;
+}
+
+/* Toggle Label Styling */
+label[style*="cursor: pointer"] {
+    font-weight: 600;
+    color: #444;
+}
+
+.toggle-checkbox {
+    width: 20px;
+    height: 20px;
+    margin-right: 15px;
+    cursor: pointer;
+    accent-color: var(--cuban-blue);
+}
+
+/* Promote Star */
+.promowane {
+    accent-color: var(--cuban-gold);
+}
+
+/* Styling for specific custom logic */
+.inbox-item {
+    background: white;
+    border-left: 4px solid var(--cuban-gold) !important;
+}
+
+/* --- DRAG & DROP --- */
+.dragging {
+    opacity: 0.5;
+    background: #e1f5fe; /* Light blue */
+    border: 2px dashed var(--cuban-blue);
+    transform: scale(0.98);
+}
+
+.event-container {
+    cursor: grab;
+}
+.event-container:active {
+    cursor: grabbing;
+}
+
+/* --- CHECKBOXES GROUPS --- */
 .checkboxes {
-	margin: 8px 0;
+	margin: 10px 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
 }
+
 .checkboxes label {
-	margin-right: 10px;
-	display: inline-block;
+	margin: 0;
+	display: flex;
+    align-items: center;
+    background: #f0f0f0;
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-size: 0.85em;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.checkboxes label:hover {
+    background: #e0e0e0;
+}
+
+.checkboxes input {
+    margin-right: 5px;
+}
+
+/* --- UTILS --- */
+#post-title {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: var(--cuban-red);
+    text-align: center;
+    border: none;
+    background: transparent;
+}
+
+details {
+    margin-bottom: 20px;
+}
+
+summary {
+    cursor: pointer;
+    font-weight: bold;
+    color: var(--cuban-blue);
+    padding: 10px;
+    background: rgba(2, 119, 189, 0.1);
+    border-radius: 5px;
+    list-style: none; /* Hide default triangle */
+    text-align: center;
+}
+
+summary:hover {
+    background: rgba(2, 119, 189, 0.2);
+}
+
+summary::after {
+    content: " 🔽";
+}
+
+details[open] summary::after {
+    content: " 🔼";
 }

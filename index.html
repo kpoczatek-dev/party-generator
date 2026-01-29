@@ -21,6 +21,15 @@
     <button id="import-btn" style="margin-top: 5px;">📥 Załaduj wydarzenia</button>
   </details>
 
+  <div class="filters" style="background: #e3f2fd; border-color: #2196f3;">
+    <h3>📬 Skrzynka Odbiorcza (Zgłoszenia)</h3>
+    <input type="text" id="google-sheet-url"
+      placeholder="Wklej link CSV z Arkusza Google (Plik -> Udostępnij -> Opublikuj w internecie -> CSV)"
+      style="width: 100%; font-size: 0.8em;">
+    <button id="check-inbox-btn" style="background: #2196f3;">🔄 Sprawdź nowe zgłoszenia</button>
+    <div id="inbox-container" style="margin-top: 15px;"></div>
+  </div>
+
   <div class="filters">
     <label for="filter-select">Widok:</label>
     <select id="filter-select">
@@ -52,6 +61,6 @@
   <h3>🔢 Daty do ankiety:</h3>
   <textarea id="ankieta" rows="4"></textarea>
 </body>
-<script src="script.js?v=20260129_0530"></script>
+<script src="script.js?v=20260129_0605"></script>
 
 </html>
