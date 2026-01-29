@@ -776,19 +776,25 @@ function initInbox() {
 
                 // Start from index 1 (skip header)
                 for (let i = 1; i < rows.length; i++) {
-                    // Simple CSV parser (split by comma, but handle potential quotes? For now simple split)
-                    // Google Forms CSV: "Timestamp","Link",...
-                    // Or just Timestamp,Link
-                    // Let's assume the Link is the second column (or find one that looks like a URL)
+                    const row = rows[i];
+                    // Smart split for CSV (handling quotes)
+                    const cols = row.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || row.split(',');
                     
-                    const cols = rows[i].split(',');
-                    // Find a column with "facebook.com"
-                    const linkCol = cols.find(c => c.includes('facebook.com') || c.includes('fb.me'));
+                    const cleanCols = cols.map(c => c.replace(/^"|"$/g, '').trim());
                     
-                    if (linkCol) {
-                        const cleanLink = linkCol.replace(/"/g, '').trim();
-                        if (!processed.includes(cleanLink)) {
-                            pendingItems.push(cleanLink);
+                    // Find Link Column
+                    const linkIndex = cleanCols.findIndex(c => c.includes('facebook.com') || c.includes('fb.me'));
+                    
+                    if (linkIndex !== -1) {
+                        const link = cleanCols[linkIndex];
+                        
+                        // Collect other info (skip Timestamp [0] and Link)
+                        const extraInfo = cleanCols
+                            .filter((c, idx) => idx !== 0 && idx !== linkIndex && c.length > 0)
+                            .join(' | ');
+
+                        if (!processed.includes(link)) {
+                            pendingItems.push({ link, info: extraInfo });
                         }
                     }
                 }
@@ -805,31 +811,53 @@ function initInbox() {
             });
     });
 
-    function renderInbox(links) {
+    function renderInbox(items) {
         container.innerHTML = '';
-        if (links.length === 0) {
+        if (items.length === 0) {
             container.innerHTML = '<div style="color: grey; font-style: italic;">Brak nowych zgłoszeń (lub wszystkie zatwierdzone).</div>';
             return;
         }
 
-        links.forEach(link => {
+        items.forEach(item => {
+            const link = item.link;
+            const info = item.info;
+
             const div = document.createElement('div');
-            div.style.background = 'white';
+            div.className = 'inbox-item'; // Use CSS class
             div.style.padding = '10px';
             div.style.marginBottom = '5px';
             div.style.borderRadius = '5px';
             div.style.display = 'flex';
             div.style.justifyContent = 'space-between';
             div.style.alignItems = 'center';
-            div.style.borderLeft = '4px solid orange';
+            div.style.borderLeft = '4px solid var(--cuban-gold)'; // Use CSS var
+            div.style.background = 'white';
+            div.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+
+            const contentDiv = document.createElement('div');
+            contentDiv.style.display = 'flex';
+            contentDiv.style.flexDirection = 'column';
 
             const linkText = document.createElement('a');
             linkText.href = link;
             linkText.target = '_blank';
-            linkText.textContent = link.length > 50 ? link.substring(0, 50) + '...' : link;
+            linkText.textContent = link.length > 40 ? link.substring(0, 40) + '...' : link;
             linkText.style.fontWeight = 'bold';
-            linkText.style.color = '#333';
+            linkText.style.color = 'var(--cuban-blue)';
             linkText.style.textDecoration = 'none';
+
+            contentDiv.appendChild(linkText);
+
+            if (info) {
+                const infoText = document.createElement('span');
+                infoText.textContent = info;
+                infoText.style.fontSize = '0.85em';
+                infoText.style.color = '#666';
+                infoText.style.marginTop = '2px';
+                contentDiv.appendChild(infoText);
+            }
+
+            div.appendChild(contentDiv);
 
             const actions = document.createElement('div');
             
@@ -971,7 +999,9 @@ function generujPost() {
 		if (dzienWiersz) wynik += `🗓️ ${dzienTekst}:\n${dzienWiersz}\n`
 	})
 
-	wynik += 'Do zobaczenia! 💃🕺\n@wszyscy\n\n' + document.getElementById('hashtagi').value
+	wynik += 'Do zobaczenia! 💃🕺\n@wszyscy\n\n'
+    wynik += 'PS: Chcesz zgłosić imprezę taneczną, która odbędzie się w najbliższym czasie? Nic prostszego! Wystarczy, że wypełnisz ten formularz. Dzięki Twojej pomocy nie przegapimy żadnej okazji do tańca! ❤️\nhttps://tiny.pl/2bc8z7649\n\n'
+    wynik += document.getElementById('hashtagi').value
 	document.getElementById('wynik').value = wynik
 	document.getElementById('ankieta').value = wynikAnkieta
 
