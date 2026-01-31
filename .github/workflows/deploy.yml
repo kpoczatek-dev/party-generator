@@ -9,19 +9,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Upload to LH
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+      - name: Upload via SFTP
+        uses: wlixcc/SFTP-Deploy-Action@v1.2.4
         with:
-          server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          port: ${{ secrets.FTP_PORT }}
-          source: "./*, !.git"
-          target: "/home/platne/serwer417204/public_html/dancepuls.katosalsahub.pl/"
-          strip_components: 0
-          overwrite: true
+          server: ${{ secrets.FTP_SERVER }}
+          port: 40022
+          local_path: './*'
+          # Ścieżka na LH dla SFTP zazwyczaj zaczyna się od /home/...
+          remote_path: '/home/platne/serwer417204/public_html/dancepuls.katosalsahub.pl'
+          sftp_args: '-o ConnectTimeout=60'
 
 
 
