@@ -18,9 +18,19 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           port: ${{ secrets.FTP_PORT }}
-          local-dir: ./
-          server-dir: "/home/platne/serwer417204/public_html/dancepuls.katosalsahub.pl/"
-          exclude: |
-            **/.git*
-            **/.github/**
-            **/node_modules/**
+                    source: "./*, !.git"
+          target: "/home/platne/serwer417204/public_html/dancepuls.katosalsahub.pl/"
+          strip_components: 0
+          overwrite: true
+
+
+
+
+
+          
+          # local-dir: ./
+          # server-dir: "/home/platne/serwer417204/public_html/dancepuls.katosalsahub.pl/"
+          # exclude: |
+          #   **/.git*
+          #   **/.github/**
+          #   **/node_modules/**
