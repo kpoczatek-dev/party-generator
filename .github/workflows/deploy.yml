@@ -18,7 +18,7 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           port: ${{ secrets.FTP_PORT }}
-                    source: "./*, !.git"
+          source: "./*, !.git"
           target: "/home/platne/serwer417204/public_html/dancepuls.katosalsahub.pl/"
           strip_components: 0
           overwrite: true
